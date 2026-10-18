@@ -58,6 +58,44 @@ int main() {
     s.menu_language_chosen = false;
     BbSettings::Load();
     assert(s.menu_language == BbSettings::MenuLanguage::Russian && s.menu_language_chosen);
+
+    // Frame generation: DLSS from the file stays; FSR 3.1 only with BB_FRAME_GEN (hidden until
+    // its artifacts are fixed); the environment wins; "1"/"0" of earlier versions still parse.
+    const auto write_frame_gen = [&](const char* text) {
+        FILE* file = std::fopen(path, "w");
+        assert(file);
+        std::fputs(text, file);
+        std::fclose(file);
+    };
+    unsetenv("BB_FRAME_GEN");
+    unsetenv("BB_FRAME_GEN_MULTIPLIER");
+    write_frame_gen("frame_generation=dlss\nframe_generation_multiplier=3\n");
+    BbSettings::Load();
+    assert(s.frame_generation == BbSettings::FrameGenDlss && s.frame_generation_multiplier == 3);
+    write_frame_gen("frame_generation=fsr3\nframe_generation_multiplier=9\n");
+    BbSettings::Load();
+    assert(s.frame_generation == BbSettings::FrameGenOff && s.frame_generation_multiplier == 4);
+    setenv("BB_FRAME_GEN", "1", 1);
+    BbSettings::Load();
+    assert(s.frame_generation == BbSettings::FrameGenFsr3);
+    setenv("BB_FRAME_GEN", "dlss", 1);
+    setenv("BB_FRAME_GEN_MULTIPLIER", "2", 1);
+    BbSettings::Load();
+    assert(s.frame_generation == BbSettings::FrameGenDlss && s.frame_generation_multiplier == 2);
+    setenv("BB_FRAME_GEN", "0", 1);
+    BbSettings::Load();
+    assert(s.frame_generation == BbSettings::FrameGenOff);
+    unsetenv("BB_FRAME_GEN");
+    unsetenv("BB_FRAME_GEN_MULTIPLIER");
+    write_frame_gen("frame_generation=1\n");
+    BbSettings::Load();
+    assert(s.frame_generation == BbSettings::FrameGenOff); // FSR 3.1 without BB_FRAME_GEN
+    s.frame_generation = BbSettings::FrameGenDlss;
+    s.frame_generation_multiplier = 4;
+    BbSettings::Save();
+    assert(Read(path).find("frame_generation=dlss\n") != std::string::npos);
+    assert(Read(path).find("frame_generation_multiplier=4\n") != std::string::npos);
+    assert(std::string(BbSettings::FrameGenName(BbSettings::FrameGenFsr3)) == "fsr3");
     unlink(path);
-    std::puts("PASS: settings save keeps other keys, menu position, menu language");
+    std::puts("PASS: settings save keeps other keys, menu position, menu language, frame generation");
 }

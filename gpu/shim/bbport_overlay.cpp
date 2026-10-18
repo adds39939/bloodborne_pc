@@ -571,21 +571,78 @@ void Menu() {
         "До 1 — резкость самого апскейлера (RCAS). Выше 1 добавляется ещё один проход RCAS. "
         "Ctrl+клик по ползунку — ввести точное значение."));
     ImGui::EndDisabled();
-    // Frame generation: hidden until its artifacts are fixed (BB_FRAME_GEN=1 for tests).
-    if (std::getenv("BB_FRAME_GEN")) {
-        ImGui::BeginDisabled(!s.frame_generation_supported.load(std::memory_order_relaxed));
-        Checkbox(BbSettings::MenuText("Frame generation (FSR 3)", "Генерация кадров (FSR 3)"),
-                 s.frame_generation);
-        ImGui::EndDisabled();
-        if (const char* problem = s.frame_generation_problem.load(std::memory_order_relaxed)) {
-            Hint(problem);
-        } else {
+    // Frame generation. FSR 3 is hidden until its artifacts are fixed (BB_FRAME_GEN=1 shows it);
+    // DLSS Frame Generation is offered where it can run (GeForce RTX 40 and newer with NVIDIA's
+    // library), and on any RTX GPU the entry says why it cannot.
+    {
+        const int current = std::clamp(s.frame_generation.load(), 0, BbSettings::FrameGenCount - 1);
+        const bool fsr3_shown = std::getenv("BB_FRAME_GEN") != nullptr ||
+                                current == BbSettings::FrameGenFsr3;
+        const int dlss_max = s.dlssg_max_multiplier.load(std::memory_order_relaxed);
+        const bool dlss_available = dlss_max > 1;
+        const bool shown = fsr3_shown || dlss_available || s.dlss_supported.load() ||
+                           current != BbSettings::FrameGenOff;
+        if (shown) {
+            const char* names[BbSettings::FrameGenCount] = {
+                BbSettings::MenuText("Off", "Выкл"), "FSR 3.1", "DLSS (NVIDIA RTX 40/50)"};
+            if (ImGui::BeginCombo(BbSettings::MenuText("Frame generation", "Генерация кадров"),
+                                  names[current])) {
+                for (int i = 0; i < BbSettings::FrameGenCount; ++i) {
+                    if (i == BbSettings::FrameGenFsr3 && !fsr3_shown) {
+                        continue;
+                    }
+                    const bool supported =
+                        i == BbSettings::FrameGenOff ||
+                        (i == BbSettings::FrameGenFsr3
+                             ? s.frame_generation_supported.load(std::memory_order_relaxed)
+                             : dlss_available);
+                    ImGui::BeginDisabled(!supported);
+                    if (ImGui::Selectable(names[i], i == current)) {
+                        Store(s.frame_generation, i, true);
+                    }
+                    ImGui::EndDisabled();
+                    if (!supported) {
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("%s", BbSettings::MenuText("— not available here",
+                                                                 "— здесь недоступно"));
+                    }
+                }
+                ImGui::EndCombo();
+            }
             Hint(BbSettings::MenuText(
-                "Shows a frame interpolated by FSR 3 between each two of the game's: twice the frames "
-                "on screen, a little more input lag. Works with every upscaler preset except Off.",
-                "Между каждыми двумя кадрами игры показывается кадр, интерполированный FSR 3: на "
-                "экране вдвое больше кадров, задержка ввода чуть выше. Работает со всеми пресетами "
-                "апскейлера, кроме «Выкл»."));
+                "Frames generated between each two of the game's: twice the frames on screen "
+                "(DLSS on GeForce RTX 50: up to four times), a little more input lag. DLSS Frame "
+                "Generation needs the DLSS bridge, NVIDIA's libnvidia-ngx-dlssg.so next to the "
+                "game or in the launcher's DLSS folder and a GeForce RTX 40 or newer. Works with "
+                "every upscaler preset except Off; menus and movies are not generated.",
+                "Между каждыми двумя кадрами игры показываются сгенерированные: на экране вдвое "
+                "больше кадров (DLSS на GeForce RTX 50 — до четырёх раз), задержка ввода чуть "
+                "выше. DLSS Frame Generation нужны мост DLSS, libnvidia-ngx-dlssg.so от NVIDIA "
+                "рядом с игрой или в папке DLSS лаунчера и GeForce RTX 40 или новее. Работает со "
+                "всеми пресетами апскейлера, кроме «Выкл»; меню и ролики не генерируются."));
+            if (current == BbSettings::FrameGenDlss && dlss_max > 2) {
+                int multiplier = std::clamp(s.frame_generation_multiplier.load(), 2, dlss_max);
+                const bool changed = ImGui::SliderInt(
+                    BbSettings::MenuText("Multiplier", "Множитель"), &multiplier, 2, dlss_max, "%dx");
+                Store(s.frame_generation_multiplier, multiplier, changed);
+                Hint(BbSettings::MenuText(
+                    "Frames on screen per game frame: 2x one generated, 4x three. The display "
+                    "needs that refresh rate for them to be seen.",
+                    "Кадров на экране на один кадр игры: 2x — один сгенерированный, 4x — три. "
+                    "Чтобы их было видно, нужна такая частота обновления дисплея."));
+            }
+            const char* problem = current == BbSettings::FrameGenDlss
+                                      ? s.dlssg_problem.load(std::memory_order_relaxed)
+                                  : current == BbSettings::FrameGenFsr3
+                                      ? s.frame_generation_problem.load(std::memory_order_relaxed)
+                                      : nullptr;
+            if (problem) {
+                char line[256];
+                std::snprintf(line, sizeof(line), BbSettings::MenuText("Frame generation: %s",
+                                                                       "Генерация кадров: %s"),
+                              problem);
+                problem_text(line);
+            }
         }
     }
     Checkbox(BbSettings::MenuText("Subpixel jitter", "Субпиксельный сдвиг (jitter)"), s.jitter);

@@ -18,6 +18,10 @@ inline bool IsFsr4(int upscaler) {
     return upscaler == UpscalerFsr4 || upscaler == UpscalerFsr411;
 }
 enum Preset : int { NativeAA = 0, Quality, Balanced, Performance, UltraPerformance, PresetCount };
+/// Frame generation (upscale/vk_frame_generation): frames made between two of the game's.
+/// FSR 3.1 frame interpolation (any GPU, 2x), DLSS Frame Generation (GeForce RTX 40: 2x, RTX 50:
+/// up to 4x).
+enum FrameGen : int { FrameGenOff = 0, FrameGenFsr3 = 1, FrameGenDlss = 2, FrameGenCount };
 enum DebugView : int { DebugNone = 0, DebugReactive = 1, DebugMotion = 2, DebugViewCount };
 enum class MenuLanguage { English, Russian };
 
@@ -114,12 +118,19 @@ struct Values {
     /// Live resolution and preset changes (run.sh): 0 off by default (startup patch, fastest
     /// on the Steam Deck and older GPUs), -1 auto (strong discrete GPUs), 1 on. On restart.
     std::atomic<int> live_resolution{0};
-    /// FSR 3 frame generation (upscale/vk_frame_generation): a frame interpolated between each
-    /// two of the game's, shown between them (needs the upscaler's scaled path). Live.
-    std::atomic<bool> frame_generation{false};
-    /// Whether the GPU can (set by the renderer), or why not.
+    /// Frame generation (upscale/vk_frame_generation): frames generated between each two of
+    /// the game's, shown between them (needs the upscaler's scaled path). Live. FrameGenFsr3 is
+    /// hidden in the menu until its artifacts are fixed (only BB_FRAME_GEN turns it on).
+    std::atomic<int> frame_generation{FrameGenOff};
+    /// Frames on screen per game frame with DLSS: 2 (RTX 40), up to 4 (RTX 50). FSR 3.1: 2.
+    std::atomic<int> frame_generation_multiplier{2};
+    /// Whether the GPU can run FSR 3 frame generation (set by the renderer), or why not.
     std::atomic<bool> frame_generation_supported{false};
     std::atomic<const char*> frame_generation_problem{nullptr};
+    /// DLSS Frame Generation: the highest multiplier this GPU offers (1: unavailable), or why
+    /// not (set by the renderer; null until the device exists, or when it is available).
+    std::atomic<int> dlssg_max_multiplier{1};
+    std::atomic<const char*> dlssg_problem{nullptr};
     /// Why FSR 4 cannot run (assets, device features), or null. Set by the renderer.
     std::atomic<const char*> fsr4_problem{nullptr};
     std::atomic<bool> fsr4_supported{false}, fsr411_supported{false};
@@ -158,6 +169,8 @@ void Save();
 /// Render resolution divisor of a preset (1.0 native, 1.5 quality, ...).
 float PresetScale(int preset);
 const char* PresetName(int preset);
+/// "off", "fsr3", "dlss" (bbport.ini, BB_FRAME_GEN).
+const char* FrameGenName(int frame_gen);
 const char* UpscalerName(int upscaler);
 
 } // namespace BbSettings

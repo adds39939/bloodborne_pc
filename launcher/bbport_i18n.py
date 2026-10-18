@@ -249,6 +249,20 @@ EN = {
     "Нужен файл libnvidia-ngx-dlss.so.<версия> из DLSS SDK NVIDIA: {}": "libnvidia-ngx-dlss.so.<version> from NVIDIA's DLSS SDK is needed: {}",
     "Не удалось скопировать библиотеку": "Could not copy the library",
     "DLSS {}: готово": "DLSS {}: ready",
+    "DLSS Frame Generation {}: готово": "DLSS Frame Generation {}: ready",
+    "Генерация кадров": "Frame generation",
+    "Выключена": "Off",
+    "FSR 3.1 (скрыто: нужен BB_FRAME_GEN=1)": "FSR 3.1 (hidden: needs BB_FRAME_GEN=1)",
+    "Кадры между кадрами игры. DLSS: нужны мост DLSS, libnvidia-ngx-dlssg.so от NVIDIA (выбирается выше, как библиотека DLSS) и GeForce RTX 40 или новее; 3x и 4x — RTX 50":
+        "Frames between the game's frames. DLSS: needs the DLSS bridge, NVIDIA's libnvidia-ngx-dlssg.so (chosen above, like the DLSS library) and a GeForce RTX 40 or newer; 3x and 4x on RTX 50",
+    "Генерация кадров: своя {}": "Frame Generation: your own {}",
+    "Генерация кадров: из сборки {}": "Frame Generation: from this build {}",
+    "Генерация кадров: нет libnvidia-ngx-dlssg.so.* (выберите её так же; DLSS SDK 310.7 или новее)":
+        "Frame Generation: no libnvidia-ngx-dlssg.so.* (choose it the same way; DLSS SDK 310.7 or newer)",
+    "Библиотека DLSS NVIDIA (libnvidia-ngx-dlss.so.*, libnvidia-ngx-dlssg.so.*)":
+        "NVIDIA's DLSS library (libnvidia-ngx-dlss.so.*, libnvidia-ngx-dlssg.so.*)",
+    "Нужен файл libnvidia-ngx-dlss.so.<версия> (DLSS) или libnvidia-ngx-dlssg.so.<версия> (генерация кадров) из DLSS SDK NVIDIA: {}":
+        "libnvidia-ngx-dlss.so.<version> (DLSS) or libnvidia-ngx-dlssg.so.<version> (frame generation) from NVIDIA's DLSS SDK is needed: {}",
     "Клавиатура и мышь": "Keyboard and mouse",
     "Камера мышью": "Mouse look",
     "Щелчок в окне игры захватывает мышь, F1 — отпускает": "A click in the game window takes the mouse, F1 releases it",
@@ -418,6 +432,9 @@ PT_BR = {
     "Разрешить HDR": "Permitir HDR",
     # Upscaler
     "Апскейлер": "Upscaler",
+    "Генерация кадров": "Geração de quadros",
+    "Выключена": "Desligada",
+    "DLSS Frame Generation {}: готово": "DLSS Frame Generation {}: pronto",
     "Хранится в bbport.ini; в игре меняется через меню (Insert или L3+R3)":
         "Armazenado em bbport.ini; no jogo, altere pelo menu (Insert ou L3+R3)",
     "TAA (нативное сглаживание)": "TAA (antisserrilhamento nativo)",
@@ -731,6 +748,9 @@ ZH_CN = {
     "Сглаживание в разрешении вывода без модели FSR": "在输出分辨率下进行抗锯齿，不使用 FSR 模型",
     "DLSS найден (нужна видеокарта NVIDIA RTX)": "已找到 DLSS（需要 NVIDIA RTX 显卡）",
     "DLSS: библиотека NVIDIA": "DLSS：NVIDIA 库",
+    "Генерация кадров": "帧生成",
+    "Выключена": "关闭",
+    "DLSS Frame Generation {}: готово": "DLSS Frame Generation {}：已就绪",
     "Выбрать файл…": "选择文件…",
     "Убрать выбранную": "移除所选",
     "Своя: {}": "自选：{}",
