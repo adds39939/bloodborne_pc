@@ -164,21 +164,19 @@ void Slider(const char* label, std::atomic<float>& value, float lo, float hi) {
     Store(value, v, ImGui::SliderFloat(label, &v, lo, hi, "%.2f"));
 }
 
-/// The FPS readout: the frames shown; with frame generation also the game's own frames and the
-/// multiplier (shown / game), as the Windows port shows it.
+/// The FPS readout: the frames shown and their interval; with frame generation the multiplier
+/// in between ("240 FPS  FG 4x  4.2 ms"), from the generated frames shown per game frame.
 std::string FpsText() {
     const auto& s = BbSettings::Get();
     const float shown = frame_ms_avg > 0.0f ? 1000.0f / frame_ms_avg : 0.0f;
     const int generated = s.frame_generation.load(std::memory_order_relaxed) != BbSettings::FrameGenOff
                               ? s.frame_gen_now.load(std::memory_order_relaxed)
                               : 0;
-    const float game = s.game_fps.load(std::memory_order_relaxed);
     char text[96];
-    if (generated > 0 && game > 0.0f) {
+    if (generated > 0) {
         std::snprintf(text, sizeof(text),
-                      BbSettings::MenuText("%.0f FPS  (game %.0f, frame gen %dx)",
-                                           "%.0f FPS  (игра %.0f, генерация %dx)"),
-                      shown, game, generated + 1);
+                      BbSettings::MenuText("%.0f FPS  FG %dx  %.1f ms", "%.0f FPS  FG %dx  %.1f мс"),
+                      shown, generated + 1, frame_ms_avg);
     } else {
         std::snprintf(text, sizeof(text), BbSettings::MenuText("%.0f FPS  %.1f ms", "%.0f FPS  %.1f мс"),
                       shown, frame_ms_avg);
