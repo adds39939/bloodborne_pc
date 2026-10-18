@@ -18,6 +18,7 @@
 #include "sdl_window.h"
 #include "textures/image.h"
 #include "textures/texture_cache.h"
+#include "bbport_settings.h"
 #include "upscale/vk_frame_generation.h"
 #include "upscale/vk_temporal_upscaler.h"
 #include "render/rasterizer.h"
@@ -619,6 +620,10 @@ void Presenter::Present(Frame* frame, bool is_reusing_frame, bool) {
     const u32 generated = blank ? 0 : std::min(frame->interp_count, Frame::MaxInterp);
     if (!blank) {
         frame->interp_count = 0;
+        // The FPS counter: the game's own rate and the frames generated for each of its frames.
+        auto& settings = BbSettings::Get();
+        settings.game_fps.store(float(1000.0 / interval_ms), std::memory_order_relaxed);
+        settings.frame_gen_now.store(int(generated), std::memory_order_relaxed);
     }
     if (only_interp && generated && frame->interp_image[0]) {
         PresentImage(frame, frame->interp_image[0], true);

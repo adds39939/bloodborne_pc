@@ -164,6 +164,28 @@ void Slider(const char* label, std::atomic<float>& value, float lo, float hi) {
     Store(value, v, ImGui::SliderFloat(label, &v, lo, hi, "%.2f"));
 }
 
+/// The FPS readout: the frames shown; with frame generation also the game's own frames and the
+/// multiplier (shown / game), as the Windows port shows it.
+std::string FpsText() {
+    const auto& s = BbSettings::Get();
+    const float shown = frame_ms_avg > 0.0f ? 1000.0f / frame_ms_avg : 0.0f;
+    const int generated = s.frame_generation.load(std::memory_order_relaxed) != BbSettings::FrameGenOff
+                              ? s.frame_gen_now.load(std::memory_order_relaxed)
+                              : 0;
+    const float game = s.game_fps.load(std::memory_order_relaxed);
+    char text[96];
+    if (generated > 0 && game > 0.0f) {
+        std::snprintf(text, sizeof(text),
+                      BbSettings::MenuText("%.0f FPS  (game %.0f, frame gen %dx)",
+                                           "%.0f FPS  (игра %.0f, генерация %dx)"),
+                      shown, game, generated + 1);
+    } else {
+        std::snprintf(text, sizeof(text), BbSettings::MenuText("%.0f FPS  %.1f ms", "%.0f FPS  %.1f мс"),
+                      shown, frame_ms_avg);
+    }
+    return text;
+}
+
 void Hint(const char* text) {
     ImGui::SameLine();
     ImGui::TextDisabled("(?)");
@@ -401,8 +423,7 @@ void Menu() {
         s.menu_language_chosen = true;
         BbSettings::Save();
     }
-    ImGui::Text(BbSettings::MenuText("%.0f FPS  (%.1f ms)", "%.0f FPS  (%.1f мс)"),
-                frame_ms_avg > 0.0f ? 1000.0f / frame_ms_avg : 0.0f, frame_ms_avg);
+    ImGui::TextUnformatted(FpsText().c_str());
     ToyPadSection();
 
     ImGui::SeparatorText(BbSettings::MenuText("Temporal upscaler", "Временной апскейлер"));
@@ -880,8 +901,7 @@ void FpsCounter() {
                      ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav |
                      ImGuiWindowFlags_NoFocusOnAppearing);
     const auto& s = BbSettings::Get();
-    ImGui::Text(BbSettings::MenuText("%.0f FPS  %.1f ms  %s", "%.0f FPS  %.1f мс  %s"),
-                frame_ms_avg > 0.0f ? 1000.0f / frame_ms_avg : 0.0f, frame_ms_avg,
+    ImGui::Text("%s  %s", FpsText().c_str(),
                 s.upscaler == BbSettings::UpscalerFsr3     ? "FSR 3.1"
                 : s.upscaler == BbSettings::UpscalerFsr4   ? "FSR 4"
                 : s.upscaler == BbSettings::UpscalerFsr411 ? "FSR 4.1.1"

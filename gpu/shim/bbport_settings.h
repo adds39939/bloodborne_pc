@@ -131,6 +131,10 @@ struct Values {
     /// not (set by the renderer; null until the device exists, or when it is available).
     std::atomic<int> dlssg_max_multiplier{1};
     std::atomic<const char*> dlssg_problem{nullptr};
+    /// The presenter's measure for the FPS counter: the game's own frame rate (real frames),
+    /// and the generated frames shown per game frame right now (0: none).
+    std::atomic<float> game_fps{0.0f};
+    std::atomic<int> frame_gen_now{0};
     /// Why FSR 4 cannot run (assets, device features), or null. Set by the renderer.
     std::atomic<const char*> fsr4_problem{nullptr};
     std::atomic<bool> fsr4_supported{false}, fsr411_supported{false};
