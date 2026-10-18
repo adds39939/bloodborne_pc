@@ -776,6 +776,43 @@ void Menu() {
             "Другое соотношение сторон расширяет обзор (интерфейс у краёв экрана). "
             "Смена размера сбрасывает историю апскейлера и может вызвать короткую паузу."));
     }
+    // Low latency (NVIDIA Reflex through VK_NV_low_latency2): shown where the driver has it,
+    // and on any NVIDIA GPU so that the entry says when the driver is too old.
+    if (s.low_latency_supported.load(std::memory_order_relaxed) || s.dlss_supported.load()) {
+        const char* latency_modes[BbSettings::LowLatencyCount] = {
+            BbSettings::MenuText("Off", "Выкл"), BbSettings::MenuText("On", "Вкл"),
+            BbSettings::MenuText("On + Boost", "Вкл + Boost")};
+        const int latency = std::clamp(s.low_latency.load(), 0, BbSettings::LowLatencyCount - 1);
+        const bool supported = s.low_latency_supported.load(std::memory_order_relaxed);
+        ImGui::BeginDisabled(!supported);
+        if (ImGui::BeginCombo(BbSettings::MenuText("Low latency (NVIDIA Reflex)",
+                                                   "Низкая задержка (NVIDIA Reflex)"),
+                              latency_modes[latency])) {
+            for (int i = 0; i < BbSettings::LowLatencyCount; ++i) {
+                if (ImGui::Selectable(latency_modes[i], i == latency)) {
+                    Store(s.low_latency, i, true);
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::EndDisabled();
+        Hint(BbSettings::MenuText(
+            "NVIDIA Reflex through the driver's Vulkan low-latency mode: the game's thread waits "
+            "for the driver before each frame so that frames do not queue up in front of the GPU; "
+            "less input lag, a little less throughput when GPU-bound. Boost keeps the GPU clocks "
+            "up. Recommended with frame generation. Needs NVIDIA's driver 550 or newer; off "
+            "elsewhere.",
+            "NVIDIA Reflex через режим низкой задержки драйвера (Vulkan): поток игры ждёт "
+            "драйвер перед каждым кадром, чтобы кадры не копились перед видеокартой; меньше "
+            "задержка ввода, чуть меньше пропускная способность при упоре в GPU. Boost держит "
+            "частоты GPU. Рекомендуется с генерацией кадров. Нужен драйвер NVIDIA 550 или новее; "
+            "иначе выключено."));
+        if (!supported) {
+            problem_text(BbSettings::MenuText(
+                "Low latency: the driver has no VK_NV_low_latency2 (NVIDIA 550 or newer)",
+                "Низкая задержка: в драйвере нет VK_NV_low_latency2 (NVIDIA 550 или новее)"));
+        }
+    }
     const char* live_modes[] = {BbSettings::MenuText("Auto (based on GPU)", "Авто (по видеокарте)"),
                                 BbSettings::MenuText("Off (faster)", "Выключена (быстрее)"),
                                 BbSettings::MenuText("On", "Включена")};

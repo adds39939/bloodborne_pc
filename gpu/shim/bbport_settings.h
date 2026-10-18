@@ -22,6 +22,8 @@ enum Preset : int { NativeAA = 0, Quality, Balanced, Performance, UltraPerforman
 /// FSR 3.1 frame interpolation (any GPU, 2x), DLSS Frame Generation (GeForce RTX 40: 2x, RTX 50:
 /// up to 4x).
 enum FrameGen : int { FrameGenOff = 0, FrameGenFsr3 = 1, FrameGenDlss = 2, FrameGenCount };
+/// Low latency (render/vk_low_latency: NVIDIA Reflex through VK_NV_low_latency2).
+enum LowLatencyMode : int { LowLatencyOff = 0, LowLatencyOn = 1, LowLatencyBoost = 2, LowLatencyCount };
 enum DebugView : int { DebugNone = 0, DebugReactive = 1, DebugMotion = 2, DebugViewCount };
 enum class MenuLanguage { English, Russian };
 
@@ -131,6 +133,10 @@ struct Values {
     /// not (set by the renderer; null until the device exists, or when it is available).
     std::atomic<int> dlssg_max_multiplier{1};
     std::atomic<const char*> dlssg_problem{nullptr};
+    /// Low latency (NVIDIA Reflex): off, on, on with boost. Live. On by default where the driver
+    /// has it (low_latency_supported, set by the renderer); nothing changes elsewhere.
+    std::atomic<int> low_latency{LowLatencyOn};
+    std::atomic<bool> low_latency_supported{false};
     /// The presenter's measure for the FPS counter: the game's own frame rate (real frames),
     /// and the generated frames shown per game frame right now (0: none).
     std::atomic<float> game_fps{0.0f};
@@ -175,6 +181,8 @@ float PresetScale(int preset);
 const char* PresetName(int preset);
 /// "off", "fsr3", "dlss" (bbport.ini, BB_FRAME_GEN).
 const char* FrameGenName(int frame_gen);
+/// "off", "on", "boost" (bbport.ini, BB_LOW_LATENCY).
+const char* LowLatencyName(int mode);
 const char* UpscalerName(int upscaler);
 
 } // namespace BbSettings

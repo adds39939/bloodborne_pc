@@ -172,7 +172,8 @@ void Instance::CreateDevice() {
         vk::PhysicalDeviceImage2DViewOf3DFeaturesEXT, vk::PhysicalDeviceShaderClockFeaturesKHR,
         vk::PhysicalDeviceComputeShaderDerivativesFeaturesKHR,
         vk::PhysicalDeviceShaderMixedFloatDotProductFeaturesVALVE,
-        vk::PhysicalDeviceCooperativeMatrixFeaturesKHR, vk::PhysicalDeviceShaderFloat8FeaturesEXT>();
+        vk::PhysicalDeviceCooperativeMatrixFeaturesKHR, vk::PhysicalDeviceShaderFloat8FeaturesEXT,
+        vk::PhysicalDevicePresentIdFeaturesKHR>();
     features = query.get().features;
     const auto& vk11 = query.get<vk::PhysicalDeviceVulkan11Features>();
     vk12_features = query.get<vk::PhysicalDeviceVulkan12Features>();
@@ -268,6 +269,11 @@ void Instance::CreateDevice() {
                      .shaderFloat8CooperativeMatrix &&
                  enable(VK_EXT_SHADER_FLOAT8_EXTENSION_NAME);
     ext.shader_clock = enable(VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
+    // Low latency (NVIDIA Reflex, render/vk_low_latency): the frame IDs of presents and the
+    // driver's sleep and markers; NVIDIA's driver only.
+    ext.present_id = query.get<vk::PhysicalDevicePresentIdFeaturesKHR>().presentId &&
+                     enable(VK_KHR_PRESENT_ID_EXTENSION_NAME);
+    ext.low_latency2 = ext.present_id && enable(VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
     subgroup_clock = query.get<vk::PhysicalDeviceShaderClockFeaturesKHR>().shaderSubgroupClock;
 
     // Queues: the first graphics family; a compute family without graphics for readbacks.
@@ -409,6 +415,7 @@ void Instance::CreateDevice() {
     vk::PhysicalDeviceCooperativeMatrixFeaturesKHR matrix{.cooperativeMatrix = true};
     vk::PhysicalDeviceShaderFloat8FeaturesEXT float8{.shaderFloat8 = true,
                                                       .shaderFloat8CooperativeMatrix = true};
+    vk::PhysicalDevicePresentIdFeaturesKHR present_id{.presentId = true};
 
     vk::DeviceCreateInfo create_info{
         .queueCreateInfoCount = u32(queues.size()),
@@ -447,6 +454,7 @@ void Instance::CreateDevice() {
     link_if(ext.mixed_float_dot, mixed_dot);
     link_if(ext.cooperative_matrix, matrix);
     link_if(ext.float8, float8);
+    link_if(ext.present_id, present_id);
 
     // DLSS (optional bridge library) needs its own device extensions on NVIDIA GPUs.
     const size_t own_extensions = enabled.size();

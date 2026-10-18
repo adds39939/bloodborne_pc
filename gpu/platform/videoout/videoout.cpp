@@ -12,6 +12,7 @@
 #include "platform/interrupts.h"
 #include "platform/kernel/event_queue.h"
 #include "platform/videoout/display.h"
+#include "render/vk_low_latency.h"
 #include "platform/videoout/videoout.h"
 #include "render/presenter.h"
 
@@ -163,6 +164,7 @@ s32 PS4_SYSV_ABI sceVideoOutSubmitFlip(s32 handle, s32 index, s32 flip_mode, s64
     if (flip_mode != 1) {
         LOG_WARNING(Lib_VideoOut, "flip mode {}", flip_mode);
     }
+    Vulkan::LowLatency::Get().GameFrameEnd(); // the game's thread: its frame is handed over
     return display->SubmitFlip(port, index, flip_arg) ? BbErr::Ok : ErrorFlipQueueFull;
 }
 
@@ -385,6 +387,7 @@ s32 sceVideoOutSubmitEopFlip(s32 handle, u32 buf_id, u32, s64 flip_arg, void**) 
         const bool queued = display->SubmitFlip(port, s32(buf_id), flip_arg, true);
         ASSERT_MSG(queued, "end-of-pipe flip refused");
     });
+    Vulkan::LowLatency::Get().GameFrameEnd(); // the game's thread: its frame is handed over
     return BbErr::Ok;
 }
 

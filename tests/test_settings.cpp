@@ -96,6 +96,24 @@ int main() {
     assert(Read(path).find("frame_generation=dlss\n") != std::string::npos);
     assert(Read(path).find("frame_generation_multiplier=4\n") != std::string::npos);
     assert(std::string(BbSettings::FrameGenName(BbSettings::FrameGenFsr3)) == "fsr3");
+    // Low latency (NVIDIA Reflex): on by default, names and numbers parse, the environment wins.
+    unsetenv("BB_LOW_LATENCY");
+    write_frame_gen("upscaler=fsr3\n");
+    BbSettings::Load();
+    assert(s.low_latency == BbSettings::LowLatencyOn);
+    write_frame_gen("low_latency=boost\n");
+    BbSettings::Load();
+    assert(s.low_latency == BbSettings::LowLatencyBoost);
+    write_frame_gen("low_latency=0\n");
+    BbSettings::Load();
+    assert(s.low_latency == BbSettings::LowLatencyOff);
+    setenv("BB_LOW_LATENCY", "on", 1);
+    BbSettings::Load();
+    assert(s.low_latency == BbSettings::LowLatencyOn);
+    unsetenv("BB_LOW_LATENCY");
+    s.low_latency = BbSettings::LowLatencyBoost;
+    BbSettings::Save();
+    assert(Read(path).find("low_latency=boost\n") != std::string::npos);
     unlink(path);
-    std::puts("PASS: settings save keeps other keys, menu position, menu language, frame generation");
+    std::puts("PASS: settings save keeps other keys, menu position, menu language, frame generation, low latency");
 }

@@ -32,6 +32,20 @@ Not yet verified on hardware by the author (no NVIDIA GPU at hand): the Vulkan p
 Windows port's working implementation (Supermedo/bloodborne_pc) and NVIDIA's Linux SDK; reports
 from RTX 40/50 owners are welcome.
 
+## Low latency: NVIDIA Reflex through VK_NV_low_latency2 (2026-10-18)
+
+On NVIDIA's driver (550 and newer) the game's thread sleeps at the start of each of its frames
+until the driver wants the frame started (`vkLatencySleepNV`, at the frame-rate hooks' pacer
+step; without the hooks right after the flip), and the frame's simulation, render submissions and
+present carry one ID through the driver's markers, `VkLatencySubmissionPresentIdNV` and
+`VK_KHR_present_id`. Generated frames are presented out of band. `gpu/render/vk_low_latency`.
+
+- *Overlay menu → Output → Low latency (NVIDIA Reflex)*: Off, On (default where available),
+  On + Boost. `bbport.ini`: `low_latency=off|on|boost`; `BB_LOW_LATENCY`. Nothing changes on GPUs
+  and drivers without the extension; the entry says so on an NVIDIA GPU with an old driver.
+- Not yet measured on hardware by the author; what to compare on an RTX card: input lag with the
+  setting Off and On at the same frame rate, with and without frame generation.
+
 ## Русский
 
 Генерация кадров DLSS (DLSS Frame Generation) работает нативно на Linux через мост DLSS, на

@@ -19,6 +19,7 @@
 #include "textures/image.h"
 #include "textures/texture_cache.h"
 #include "bbport_settings.h"
+#include "render/vk_low_latency.h"
 #include "upscale/vk_frame_generation.h"
 #include "upscale/vk_temporal_upscaler.h"
 #include "render/rasterizer.h"
@@ -106,6 +107,9 @@ Presenter::Presenter(Frontend::WindowSDL& window_, BbCp::CommandProcessor* cp_)
         free_frames.push_back(&frames[i]);
     }
     BbOverlay::Init(instance, swapchain.GetSurfaceFormat().format, count);
+    // Low latency (NVIDIA Reflex): the draw scheduler's submissions are the game's frames.
+    LowLatency::Get().Initialize(instance);
+    draw_scheduler.SetRendersFrames(true);
 }
 
 Presenter::~Presenter() {
@@ -360,6 +364,7 @@ Frame* Presenter::PrepareFrame(const BbVideoOut::BufferAttributeGroup& attribute
     SubmitInfo info{};
     draw_scheduler.NoteFrameEndSubmission();
     draw_scheduler.Flush(info);
+    frame->present_id = LowLatency::Get().RenderSubmitEnd(); // the frame's last submission
     BbTimeline::Note(BbTimeline::PipeTask, 5, frame->ready_tick);
 
     // The command processor thread runs at most FramesAhead() guest frames ahead of the GPU: it
@@ -602,6 +607,7 @@ void Presenter::Present(Frame* frame, bool is_reusing_frame, bool) {
         }
     };
     const bool blank = frame == &blank_frame;
+    LowLatency::Get().ApplySettings(); // the menu's mode to the driver (cheap when unchanged)
     // Frame generation: the generated frames first, evenly spaced over the interval between
     // real frames (smoothed), the real one last.
     using Clock = std::chrono::steady_clock;
@@ -638,14 +644,19 @@ void Presenter::Present(Frame* frame, bool is_reusing_frame, bool) {
         if (const u64 n = ++shown; n == 1 || n % 1000 == 0) {
             std::printf("Frame generation: %llu generated frames shown\n", (unsigned long long)n);
         }
-        if (PresentImage(frame, frame->interp_image[i], false)) {
+        LowLatency::Get().PresentStart(frame->present_id, true);
+        const bool presented = PresentImage(frame, frame->interp_image[i], false);
+        LowLatency::Get().PresentEnd(frame->present_id, true);
+        if (presented) {
             const double at_ms = interval_ms * double(i + 1) / double(generated + 1);
             std::this_thread::sleep_until(now + std::chrono::duration_cast<Clock::duration>(
                                                     std::chrono::duration<double, std::milli>(
                                                         std::clamp(at_ms, 1.0, 50.0))));
         }
     }
+    LowLatency::Get().PresentStart(blank ? 0 : frame->present_id, false);
     PresentImage(frame, {}, true);
+    LowLatency::Get().PresentEnd(blank ? 0 : frame->present_id, false);
     release();
 }
 
@@ -718,10 +729,12 @@ bool Presenter::PresentImage(Frame* frame, vk::Image source, bool last) {
         }
     }
     info.AddSignal(swapchain.GetPresentReadySemaphore());
+    const u64 present_id = !blank && last && !source ? frame->present_id : 0;
+    info.present_id = present_id; // low latency: the frame's own present
     present_scheduler.Flush(info);
     {
         std::scoped_lock lock{Scheduler::submit_mutex};
-        if (!swapchain.Present()) {
+        if (!swapchain.Present(present_id)) {
             swapchain.Recreate(width, height);
             return false;
         }

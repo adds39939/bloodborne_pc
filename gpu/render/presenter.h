@@ -56,6 +56,8 @@ struct Frame {
     std::array<vk::Image, MaxInterp> interp_image{};
     std::array<vk::ImageView, MaxInterp> interp_view{};
     u32 interp_count = 0;
+    /// Low latency: the frame's ID for the driver (0: a blank frame).
+    u64 present_id = 0;
 };
 
 class Presenter {

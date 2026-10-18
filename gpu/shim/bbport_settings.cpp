@@ -81,6 +81,11 @@ void Set(Values& v, const std::string& key, const std::string& value) {
         }
     } else if (key == "frame_generation_multiplier") {
         v.frame_generation_multiplier = std::clamp(i, 2, 4);
+    } else if (key == "low_latency") {
+        v.low_latency = std::clamp(i, 0, LowLatencyCount - 1);
+        for (int m = 0; m < LowLatencyCount; ++m) {
+            if (value == LowLatencyName(m)) v.low_latency = m;
+        }
     } else if (key == "live_resolution") {
         v.live_resolution = value == "auto" ? -1 : std::clamp(i, 0, 1);
     } else if (key == "output_res") {
@@ -271,6 +276,7 @@ void Load() {
         {"BB_REACTIVE_THRESHOLD", "reactive_threshold"}, {"BB_REACTIVE_MAX", "reactive_max"},
         {"BB_UPSCALE_PRESET", "preset"},            {"BB_OBJECT_MOTION", "object_motion"},
         {"BB_FRAME_GEN", "frame_generation"},       {"BB_FRAME_GEN_MULTIPLIER", "frame_generation_multiplier"},
+        {"BB_LOW_LATENCY", "low_latency"},
     };
     // FSR 3 frame generation is hidden in the menu until its artifacts are fixed: only
     // BB_FRAME_GEN turns it on, a saved setting does not. A saved DLSS Frame Generation stays.
@@ -384,6 +390,7 @@ void Save() {
     put("live_resolution", v.live_resolution < 0 ? "auto" : flag(v.live_resolution != 0));
     put("frame_generation", FrameGenName(v.frame_generation));
     put("frame_generation_multiplier", std::to_string(v.frame_generation_multiplier.load()));
+    put("low_latency", LowLatencyName(v.low_latency));
     if (v.menu_x >= 0.0f && v.menu_y >= 0.0f) {
         put("menu_pos", fixed(v.menu_x, 4) + "," + fixed(v.menu_y, 4));
     }
@@ -446,6 +453,11 @@ const char* PresetName(int preset) {
 const char* UpscalerName(int upscaler) {
     static constexpr const char* names[UpscalerCount] = {"off", "fsr3", "fsr4", "fsr411", "taa", "dlss"};
     return names[std::clamp(upscaler, 0, UpscalerCount - 1)];
+}
+
+const char* LowLatencyName(int mode) {
+    static constexpr const char* names[LowLatencyCount] = {"off", "on", "boost"};
+    return names[std::clamp(mode, 0, LowLatencyCount - 1)];
 }
 
 const char* FrameGenName(int frame_gen) {
