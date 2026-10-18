@@ -114,6 +114,18 @@ int main() {
     s.low_latency = BbSettings::LowLatencyBoost;
     BbSettings::Save();
     assert(Read(path).find("low_latency=boost\n") != std::string::npos);
+    // With DLSS Frame Generation running, Off becomes On; Boost stays; off without it.
+    s.low_latency = BbSettings::LowLatencyOff;
+    s.frame_generation = BbSettings::FrameGenDlss;
+    s.dlssg_max_multiplier = 1; // unavailable: the setting stands
+    assert(BbSettings::EffectiveLowLatency() == BbSettings::LowLatencyOff);
+    s.dlssg_max_multiplier = 2;
+    assert(BbSettings::EffectiveLowLatency() == BbSettings::LowLatencyOn);
+    s.low_latency = BbSettings::LowLatencyBoost;
+    assert(BbSettings::EffectiveLowLatency() == BbSettings::LowLatencyBoost);
+    s.frame_generation = BbSettings::FrameGenOff;
+    s.low_latency = BbSettings::LowLatencyOff;
+    assert(BbSettings::EffectiveLowLatency() == BbSettings::LowLatencyOff);
     unlink(path);
     std::puts("PASS: settings save keeps other keys, menu position, menu language, frame generation, low latency");
 }

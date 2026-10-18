@@ -29,7 +29,7 @@ void LowLatency::Initialize(const Instance& instance) {
     sleep_semaphore = Check<"create the low latency semaphore">(
         device.createSemaphoreUnique({.pNext = &timeline}));
     std::printf("Low latency: NVIDIA Reflex (VK_NV_low_latency2) available, %s\n",
-                BbSettings::LowLatencyName(settings.low_latency.load()));
+                BbSettings::LowLatencyName(BbSettings::EffectiveLowLatency()));
 }
 
 void LowLatency::SwapchainCreated(vk::SwapchainKHR created) {
@@ -65,7 +65,8 @@ void LowLatency::ApplySettings() {
     if (!available) {
         return;
     }
-    const int mode = std::clamp(BbSettings::Get().low_latency.load(std::memory_order_relaxed), 0, 2);
+    // The setting, but at least On with DLSS Frame Generation (BbSettings::EffectiveLowLatency).
+    const int mode = std::clamp(BbSettings::EffectiveLowLatency(), 0, 2);
     std::scoped_lock lock{mutex};
     if (!swapchain || mode == applied_mode) {
         return;

@@ -220,6 +220,7 @@ INI_DEFAULTS = {
     "live_resolution": "0",
     "frame_generation": "off",
     "frame_generation_multiplier": "2",
+    "low_latency": "on",
     "mouse_look": "1",
     "mouse_sensitivity": "1.00",
     "mouse_invert_y": "0",
@@ -305,6 +306,9 @@ DLSS_SDK_URL = "https://github.com/NVIDIA/DLSS/tree/main/lib/Linux_x86_64/rel"
 # offers DLSS; FSR 3.1 stays hidden until its artifacts are fixed (BB_FRAME_GEN=1 in the game).
 FRAME_GENS = [("Выключена", "off"), ("DLSS 2x (NVIDIA RTX 40/50)", "dlss2"),
               ("DLSS 3x (NVIDIA RTX 50)", "dlss3"), ("DLSS 4x (NVIDIA RTX 50)", "dlss4")]
+# Low latency (bbport.ini low_latency): NVIDIA Reflex through VK_NV_low_latency2 (NVIDIA driver
+# 550+; nothing changes elsewhere). With DLSS frame generation the game keeps it at least on.
+LOW_LATENCIES = [("Включена", "on"), ("Включена + Boost", "boost"), ("Выключена", "off")]
 
 
 def frame_gen_choice(ini):
@@ -821,6 +825,23 @@ class LauncherWindow(Adw.ApplicationWindow):
                "(выбирается выше, как библиотека DLSS) и GeForce RTX 40 или новее; 3x и 4x — RTX 50"),
             frame_gens, "fsr3" if self.ini.get("frame_generation") == "fsr3" else frame_gen_choice(self.ini))
         upscaler.add(self.frame_gen_row)
+        # Low latency (NVIDIA Reflex): with DLSS frame generation at least on (the game enforces
+        # it; the row follows so that what is shown is what runs).
+        low_latency = self.ini.get("low_latency", "on")
+        self.low_latency_row = combo_row(
+            tr("Низкая задержка (NVIDIA Reflex)"),
+            tr("Поток игры ждёт драйвер перед каждым кадром, чтобы кадры не копились перед "
+               "видеокартой: меньше задержка ввода. Драйвер NVIDIA 550 и новее; на других видеокартах "
+               "ничего не меняется. С генерацией кадров DLSS всегда не ниже «Включена»"),
+            LOW_LATENCIES, low_latency if low_latency in ("on", "boost", "off") else "on")
+        upscaler.add(self.low_latency_row)
+
+        def enforce_low_latency(*_):
+            if combo_value(self.frame_gen_row).startswith("dlss") and combo_value(self.low_latency_row) == "off":
+                self.low_latency_row.set_selected(0)  # "on"
+        self.frame_gen_row.connect("notify::selected", enforce_low_latency)
+        self.low_latency_row.connect("notify::selected", enforce_low_latency)
+        enforce_low_latency()
         self.preset_row = combo_row(tr("Пресет"), None, PRESETS, int(self.ini.get("preset", "4")))
         self.preset_row.connect("notify::selected", lambda *_: self.update_upscaler_status())
         self.output_row.connect("notify::selected", lambda *_: self.update_upscaler_status())
@@ -1204,6 +1225,7 @@ class LauncherWindow(Adw.ApplicationWindow):
             "upscaler": combo_value(self.upscaler_row),
             "frame_generation": frame_generation,
             "frame_generation_multiplier": frame_generation_multiplier,
+            "low_latency": combo_value(self.low_latency_row),
             "preset": str(combo_value(self.preset_row)),
             "sharpen": "1" if self.sharpen_row.get_active() else "0",
             "sharpness": f"{self.sharpness_row.get_value():.2f}",

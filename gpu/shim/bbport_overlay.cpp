@@ -784,13 +784,25 @@ void Menu() {
             BbSettings::MenuText("On + Boost", "Вкл + Boost")};
         const int latency = std::clamp(s.low_latency.load(), 0, BbSettings::LowLatencyCount - 1);
         const bool supported = s.low_latency_supported.load(std::memory_order_relaxed);
+        // With DLSS Frame Generation at least On (BbSettings::EffectiveLowLatency): Off is shown
+        // as what runs and cannot be chosen.
+        const int effective = std::clamp(BbSettings::EffectiveLowLatency(), 0, BbSettings::LowLatencyCount - 1);
+        const bool forced = effective != latency;
         ImGui::BeginDisabled(!supported);
         if (ImGui::BeginCombo(BbSettings::MenuText("Low latency (NVIDIA Reflex)",
                                                    "Низкая задержка (NVIDIA Reflex)"),
-                              latency_modes[latency])) {
+                              latency_modes[effective])) {
             for (int i = 0; i < BbSettings::LowLatencyCount; ++i) {
-                if (ImGui::Selectable(latency_modes[i], i == latency)) {
+                const bool allowed = i != BbSettings::LowLatencyOff || !forced;
+                ImGui::BeginDisabled(!allowed);
+                if (ImGui::Selectable(latency_modes[i], i == effective)) {
                     Store(s.low_latency, i, true);
+                }
+                ImGui::EndDisabled();
+                if (!allowed) {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("%s", BbSettings::MenuText("— on with DLSS frame generation",
+                                                             "— вкл с генерацией кадров DLSS"));
                 }
             }
             ImGui::EndCombo();

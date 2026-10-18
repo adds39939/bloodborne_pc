@@ -250,6 +250,10 @@ EN = {
     "Не удалось скопировать библиотеку": "Could not copy the library",
     "DLSS {}: готово": "DLSS {}: ready",
     "DLSS Frame Generation {}: готово": "DLSS Frame Generation {}: ready",
+    "Низкая задержка (NVIDIA Reflex)": "Low latency (NVIDIA Reflex)",
+    "Включена + Boost": "On + Boost",
+    "Поток игры ждёт драйвер перед каждым кадром, чтобы кадры не копились перед видеокартой: меньше задержка ввода. Драйвер NVIDIA 550 и новее; на других видеокартах ничего не меняется. С генерацией кадров DLSS всегда не ниже «Включена»":
+        "The game's thread waits for the driver before each frame so that frames do not queue up in front of the GPU: less input lag. NVIDIA driver 550 or newer; nothing changes on other GPUs. With DLSS frame generation always at least On",
     "Генерация кадров": "Frame generation",
     "Выключена": "Off",
     "FSR 3.1 (скрыто: нужен BB_FRAME_GEN=1)": "FSR 3.1 (hidden: needs BB_FRAME_GEN=1)",
@@ -435,6 +439,8 @@ PT_BR = {
     "Генерация кадров": "Geração de quadros",
     "Выключена": "Desligada",
     "DLSS Frame Generation {}: готово": "DLSS Frame Generation {}: pronto",
+    "Низкая задержка (NVIDIA Reflex)": "Baixa latência (NVIDIA Reflex)",
+    "Включена + Boost": "Ligada + Boost",
     "Хранится в bbport.ini; в игре меняется через меню (Insert или L3+R3)":
         "Armazenado em bbport.ini; no jogo, altere pelo menu (Insert ou L3+R3)",
     "TAA (нативное сглаживание)": "TAA (antisserrilhamento nativo)",
@@ -751,6 +757,8 @@ ZH_CN = {
     "Генерация кадров": "帧生成",
     "Выключена": "关闭",
     "DLSS Frame Generation {}: готово": "DLSS Frame Generation {}：已就绪",
+    "Низкая задержка (NVIDIA Reflex)": "低延迟（NVIDIA Reflex）",
+    "Включена + Boost": "开启 + Boost",
     "Выбрать файл…": "选择文件…",
     "Убрать выбранную": "移除所选",
     "Своя: {}": "自选：{}",

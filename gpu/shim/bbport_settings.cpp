@@ -460,6 +460,14 @@ const char* LowLatencyName(int mode) {
     return names[std::clamp(mode, 0, LowLatencyCount - 1)];
 }
 
+int EffectiveLowLatency() {
+    const auto& v = Get();
+    const int mode = std::clamp(v.low_latency.load(std::memory_order_relaxed), 0, LowLatencyCount - 1);
+    const bool dlss_frame_gen = v.frame_generation.load(std::memory_order_relaxed) == FrameGenDlss &&
+                                v.dlssg_max_multiplier.load(std::memory_order_relaxed) > 1;
+    return dlss_frame_gen && mode == LowLatencyOff ? int(LowLatencyOn) : mode;
+}
+
 const char* FrameGenName(int frame_gen) {
     static constexpr const char* names[FrameGenCount] = {"off", "fsr3", "dlss"};
     return names[std::clamp(frame_gen, 0, FrameGenCount - 1)];

@@ -303,9 +303,10 @@ from the command line. FSR 3.1 frame generation stays hidden until its artifacts
 form of Reflex, `VK_NV_low_latency2`, the same mechanism Proton gives Windows games: the game's
 thread waits for the driver before each frame so that frames do not queue up in front of the GPU,
 and the frame's simulation, submissions and present are marked for the driver. On by default where
-the driver has it (*Overlay menu → Output → Low latency (NVIDIA Reflex)*: Off, On, On + Boost;
-`low_latency=off|on|boost` in `bbport.ini`, `BB_LOW_LATENCY`); nothing changes on other GPUs.
-Recommended with frame generation, as NVIDIA requires of games.
+the driver has it: the overlay menu (*Output → Low latency (NVIDIA Reflex)*) and the launcher
+offer Off, On and On + Boost (`low_latency=off|on|boost` in `bbport.ini`, `BB_LOW_LATENCY`);
+nothing changes on other GPUs. With DLSS frame generation it is always at least On, as NVIDIA
+requires of games: the generated frames add latency that Reflex takes back.
 
 From source the script takes its tools from the system (MinGW GCC, CMake, Ninja, Python 3,
 SPIRV-Tools, Git) or from Nix; the AppImage has them prebuilt.

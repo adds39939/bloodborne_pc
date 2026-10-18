@@ -40,9 +40,11 @@ step; without the hooks right after the flip), and the frame's simulation, rende
 present carry one ID through the driver's markers, `VkLatencySubmissionPresentIdNV` and
 `VK_KHR_present_id`. Generated frames are presented out of band. `gpu/render/vk_low_latency`.
 
-- *Overlay menu → Output → Low latency (NVIDIA Reflex)*: Off, On (default where available),
-  On + Boost. `bbport.ini`: `low_latency=off|on|boost`; `BB_LOW_LATENCY`. Nothing changes on GPUs
-  and drivers without the extension; the entry says so on an NVIDIA GPU with an old driver.
+- *Overlay menu → Output → Low latency (NVIDIA Reflex)* and the launcher: Off, On (default where
+  available), On + Boost. `bbport.ini`: `low_latency=off|on|boost`; `BB_LOW_LATENCY`. With DLSS
+  frame generation it is always at least On (the overlay shows that and greys Off out; the
+  launcher's row follows). Nothing changes on GPUs and drivers without the extension; the entry
+  says so on an NVIDIA GPU with an old driver.
 - Not yet measured on hardware by the author; what to compare on an RTX card: input lag with the
   setting Off and On at the same frame rate, with and without frame generation.
 

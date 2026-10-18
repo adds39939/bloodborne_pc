@@ -183,6 +183,9 @@ const char* PresetName(int preset);
 const char* FrameGenName(int frame_gen);
 /// "off", "on", "boost" (bbport.ini, BB_LOW_LATENCY).
 const char* LowLatencyName(int mode);
+/// The low latency mode that runs: the setting, but at least On with DLSS Frame Generation (as
+/// NVIDIA requires of games: generated frames add latency that Reflex takes back).
+int EffectiveLowLatency();
 const char* UpscalerName(int upscaler);
 
 } // namespace BbSettings
