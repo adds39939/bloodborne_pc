@@ -1,0 +1,164 @@
+# Builds the bbport AppImage on a GitHub-hosted runner, exactly as a developer does locally
+# (build.sh in the project's Nix shell, then packaging/appimage.sh), with NVIDIA's DLSS SDK for
+# DLSS Super Resolution and Frame Generation, and publishes it as a pre-release of this
+# repository. A run started by hand (Actions -> AppImage -> Run workflow) builds any branch or
+# commit; pushing a tag named build-* or v* builds that tag.
+#
+# Everything is pinned (nixpkgs, the DLSS SDK) and logged in the release notes, so a build can be
+# traced to its sources. The first run takes about two hours (Mesa's Vulkan drivers and GTK 4 are
+# built from source for the AppImage); later runs reuse the Nix store cache when it fits.
+name: AppImage
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag or commit to build"
+        required: true
+        default: "dlss-frame-generation"
+      tag:
+        description: "Release tag (empty: build-<short commit>)"
+        required: false
+        default: ""
+  push:
+    tags: ["build-*", "v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: appimage-${{ github.event.inputs.ref || github.ref }}
+  cancel-in-progress: false
+
+env:
+  # nixpkgs-unstable of 2026-10-18 (Mesa 26.2.5): the same tree the branch was tested with.
+  NIXPKGS_REV: f20cd90e28fe0403873f473b29e42662cd86e8c4
+  NIX_PATH: nixpkgs=https://github.com/NixOS/nixpkgs/archive/f20cd90e28fe0403873f473b29e42662cd86e8c4.tar.gz
+  # github.com/NVIDIA/DLSS: "DLSS 310.9.16 SDK" (Super Resolution and Frame Generation for Linux).
+  DLSS_SDK_REV: 9981c6350dc58c0ce21f024fd65e31e851c31689
+
+jobs:
+  appimage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    steps:
+      - name: Free disk space (the Nix store of this build is ~20 GB)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Check out the port
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v16
+        with:
+          extra-conf: |
+            max-jobs = auto
+            cores = 0
+
+      - name: Nix store cache (Mesa, GTK 4 and the shell's tools; 10 GB at most)
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: appimage-nix-${{ runner.os }}-${{ env.NIXPKGS_REV }}-${{ hashFiles('shell.nix', 'packaging/default.nix') }}
+          restore-prefixes-first-match: appimage-nix-${{ runner.os }}-${{ env.NIXPKGS_REV }}-
+          gc-max-store-size-linux: 9G
+          purge: true
+          purge-prefixes: appimage-nix-${{ runner.os }}-
+          purge-created: 0
+          purge-primary-key: never
+
+      - name: NVIDIA DLSS SDK (headers, the Linux libraries; nothing of it is in this repository)
+        run: |
+          set -euo pipefail
+          sdk="$RUNNER_TEMP/DLSS"
+          git clone --filter=blob:none --no-checkout https://github.com/NVIDIA/DLSS "$sdk"
+          git -C "$sdk" sparse-checkout init --cone
+          git -C "$sdk" sparse-checkout set include lib/Linux_x86_64
+          git -C "$sdk" checkout "$DLSS_SDK_REV"
+          ls "$sdk"/lib/Linux_x86_64/rel/
+          echo "DLSS_SDK_ROOT=$sdk" >> "$GITHUB_ENV"
+
+      - name: FSR 4 assets (MIT, Q2RTX's build of AMD's FSR 4 source)
+        run: nix-shell shell.nix --run "bash tools/fetch_fsr4_assets.sh"
+
+      - name: Build the port with the DLSS bridge
+        run: nix-shell shell.nix --run "DLSS_SDK_ROOT=$DLSS_SDK_ROOT bash build.sh"
+
+      - name: Unit tests
+        run: |
+          nix-shell shell.nix --run "ninja -C out/gpu settings-test camera-matrices-test upscaler-support-test \
+            && out/gpu/settings-test && out/gpu/camera-matrices-test && out/gpu/upscaler-support-test"
+
+      - name: Build the AppImage
+        run: bash packaging/appimage.sh
+
+      - name: Name, checksum and describe the build
+        id: describe
+        run: |
+          set -euo pipefail
+          short=$(git rev-parse --short HEAD)
+          tag="${{ github.event.inputs.tag }}"
+          if [ -z "$tag" ]; then
+            case "${GITHUB_REF}" in
+              refs/tags/*) tag="${GITHUB_REF#refs/tags/}" ;;
+              *) tag="build-$short" ;;
+            esac
+          fi
+          name="Bloodborne-bbport-x86_64-$short.AppImage"
+          mv dist/Bloodborne-bbport-x86_64.AppImage "dist/$name"
+          (cd dist && sha256sum "$name" > SHA256SUMS)
+          dlss_lib=$(basename "$DLSS_SDK_ROOT"/lib/Linux_x86_64/rel/libnvidia-ngx-dlss.so.*)
+          dlssg_lib=$(basename "$DLSS_SDK_ROOT"/lib/Linux_x86_64/rel/libnvidia-ngx-dlssg.so.* 2>/dev/null || echo "none")
+          {
+            echo "Built by GitHub Actions from \`${{ github.repository }}\` at commit \`$(git rev-parse HEAD)\` (\`${{ github.event.inputs.ref || github.ref_name }}\`), run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+            echo
+            echo "- nixpkgs \`$NIXPKGS_REV\`"
+            echo "- NVIDIA DLSS SDK \`$DLSS_SDK_REV\`: \`$dlss_lib\`, \`$dlssg_lib\` (license: NVIDIA-DLSS-LICENSE.txt in the package)"
+            echo "- FSR 4 v07 assets from Q2RTX (MIT); FSR 4.1.1 models are not included (build them in the launcher from your own AMD DLL)"
+            echo "- Unit tests passed in the run: settings, camera matrices, upscaler support"
+            echo
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+            echo
+            echo "No game files are included. Data goes to \`~/.local/share/bbport\`. Pre-release: for testing the branch."
+          } > dist/RELEASE_NOTES.md
+          cp dist/RELEASE_NOTES.md "$GITHUB_STEP_SUMMARY"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "short=$short" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Keep the AppImage as a run artifact too
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bloodborne-bbport-x86_64-${{ steps.describe.outputs.short }}
+          path: |
+            dist/*.AppImage
+            dist/SHA256SUMS
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.describe.outputs.tag }}
+          # The commit that was built (a run started by hand may build another ref than the
+          # one carrying this workflow): the tag is created there.
+          target_commitish: ${{ steps.describe.outputs.sha }}
+          name: "bbport AppImage ${{ steps.describe.outputs.tag }}"
+          body_path: dist/RELEASE_NOTES.md
+          prerelease: true
+          files: |
+            dist/*.AppImage
+            dist/SHA256SUMS
